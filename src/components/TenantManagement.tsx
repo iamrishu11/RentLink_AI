@@ -130,7 +130,7 @@ const TenantManagement = ({ className }: TenantManagementProps) => {
       </div>
 
       {loading ? (
-        <p className="text-center">Loading tenants...</p>
+        <p className="text-center">Loading tenants..... Waking up server on Reander Please be patient.</p>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTenants.map((tenant) => (
