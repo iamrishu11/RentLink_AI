@@ -35,7 +35,7 @@ const Reminders = ({ className }: RemindersProps) => {
     const fetchReminders = async () => {
       setLoading(true);
       try {
-        const response = await axios.get("http://localhost:5000/api/reminders"); // Update API URL if needed
+        const response = await axios.get("https://rentlink-ai.onrender.com/api/reminders"); // Update API URL if needed
         console.log("Fetched reminders:", response.data);
         setReminders(response.data); // Update state with fetched reminders
       } catch (error) {
