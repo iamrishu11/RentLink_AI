@@ -61,7 +61,7 @@ const Reminders = ({ className }: RemindersProps) => {
       }));
   
       // Send the updated reminders to the backend
-      await axios.put("http://localhost:5000/api/reminders/update", updatedReminders);
+      await axios.put("https://rentlink-ai.onrender.com/api/reminders/update", updatedReminders);
   
       // After successful update, update the state with the new lastSent field
       setReminders(updatedReminders);

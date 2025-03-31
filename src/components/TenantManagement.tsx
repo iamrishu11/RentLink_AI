@@ -43,7 +43,7 @@ const TenantManagement = ({ className }: TenantManagementProps) => {
   //  Fetch tenants from backend
   const fetchTenants = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/tenants"); // Update API URL if needed
+      const response = await axios.get("https://rentlink-ai.onrender.com/api/tenants"); // Update API URL if needed
       setTenants(response.data);
       setLoading(false);
     } catch (error) {
@@ -64,7 +64,7 @@ const TenantManagement = ({ className }: TenantManagementProps) => {
     }
 
     try {
-      const response = await axios.post("http://localhost:5000/api/tenants", {
+      const response = await axios.post("https://rentlink-ai.onrender.com/api/tenants", {
         name: newTenant.name,
         email: newTenant.email,
         phone: newTenant.phone || "-",

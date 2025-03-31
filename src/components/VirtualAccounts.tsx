@@ -25,7 +25,7 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
   useEffect(() => {
     const fetchTenants = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/tenants'); // Update API endpoint
+        const response = await axios.get('https://rentlink-ai.onrender.com/api/tenants'); // Update API endpoint
         setTenants(response.data); 
       } catch (error) {
         console.error('Error fetching tenants:', error);
@@ -39,7 +39,7 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
 
     const fetchActiveAccounts = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/accounts'); 
+        const response = await axios.get('https://rentlink-ai.onrender.com/api/accounts'); 
         setAccounts(response.data);
       } catch (error) {
         console.error('Error fetching active accounts:', error);
@@ -118,7 +118,7 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
 
     try {
       // Send POST request to the backend to create the account
-      const response = await axios.post("http://localhost:5000/api/accounts", tenantData);
+      const response = await axios.post("https://rentlink-ai.onrender.com/api/accounts", tenantData);
 
       const newAccount = response.data;
 
