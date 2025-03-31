@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import tenantRoutes from "./routes/tenants.js"; // Ensure the file exists
 import reminderRoutes from "./routes/reminders.js"; 
+import activeAccountsRoutes from './routes/activeaccounts.js';
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.get("/", (req, res) => {
 });
 app.use("/api/tenants", tenantRoutes);
 app.use("/api/reminders", reminderRoutes); // Use reminders API
+app.use('/api/accounts', activeAccountsRoutes); // Use the active accounts routes
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

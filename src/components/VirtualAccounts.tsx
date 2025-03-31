@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios'; // Import axios
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Copy, ExternalLink, CheckCircle, PlusCircle, RefreshCw, Loader2, DollarSign } from "lucide-react";
@@ -18,27 +19,40 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
-  const [accounts, setAccounts] = useState([
-    { tenant: "James Wilson", account: "VA-2023-001-JW", status: "Active", payeeId: "pd-sample-001" },
-    { tenant: "Sarah Johnson", account: "VA-2023-002-SJ", status: "Active", payeeId: "pd-sample-002" },
-    { tenant: "Michael Brown", account: "VA-2023-003-MB", status: "Active", payeeId: "pd-sample-003" },
-  ]);
+  const [accounts, setAccounts] = useState<any[]>([]); // To store the active accounts dynamically
   const [tenants, setTenants] = useState<any[]>([]); // To store tenant data
 
   useEffect(() => {
-    // Fetch tenant data from API
     const fetchTenants = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/tenants'); // Replace with your actual API endpoint
-        const data = await response.json();
-        setTenants(data); // Set tenant data from the backend
+        const response = await axios.get('http://localhost:5000/api/tenants'); // Update API endpoint
+        setTenants(response.data); 
       } catch (error) {
         console.error('Error fetching tenants:', error);
+        toast({
+          title: "Error fetching tenants",
+          description: "Unable to retrieve tenant data.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    const fetchActiveAccounts = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/accounts'); 
+        setAccounts(response.data);
+      } catch (error) {
+        console.error('Error fetching active accounts:', error);
+        toast({
+          title: "Error fetching active accounts",
+          description: "Unable to retrieve active accounts.",
+          variant: "destructive",
+        });
       }
     };
 
     fetchTenants();
-    // Fetch balance on component load
+    fetchActiveAccounts();
     fetchBalance();
   }, []);
 
@@ -69,95 +83,97 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
 
   const handleGenerateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedTenant || !rentAmount) {
       toast({
         title: "Missing information",
         description: "Please select a tenant and enter rent amount",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    setIsCreating(true);
-    
-    try {
-      // Generate tenant initials for the account number
-      const tenantInitials = selectedTenant.split(" ")
-        .map(name => name[0])
-        .join("");
-      
-      const newAccountNumber = `VA-${new Date().getFullYear()}-${String(accounts.length + 1).padStart(3, '0')}-${tenantInitials}`;
-      
-      // Create a payee in Payman
-      const email = selectedTenant.toLowerCase().replace(' ', '.') + '@example.com';
-      const payee = await paymanService.createPayee({
-        type: "US_ACH",
-        name: selectedTenant,
-        accountHolderName: selectedTenant,
-        accountHolderType: accountType === "personal" ? "individual" : "business",
-        accountNumber: "12345678",  // Normally would be collected securely
-        routingNumber: "021000021", // Normally would be collected securely
-        accountType: "checking",
-        contactDetails: {
-          email: email
-        }
+    // Ensure rentAmount is a valid number and not empty
+    const rentAmountValue = parseFloat(rentAmount);
+    if (isNaN(rentAmountValue) || rentAmountValue <= 0) {
+      toast({
+        title: "Invalid Rent Amount",
+        description: "Please provide a valid rent amount.",
+        variant: "destructive",
       });
-      
-      // Add the new account with Payman payee ID
-      setAccounts([
-        ...accounts,
-        { 
-          tenant: selectedTenant, 
-          account: newAccountNumber, 
+      return;
+    }
+
+    // Prepare the request payload
+    const tenantData = {
+      tenant: selectedTenant,  // This must match the field name in the backend schema
+      account: `VA-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,  // Example account number generation
+      payeeId: Math.random().toString(36).substring(2, 15),  // Example payeeId generation
+    };
+
+    // Log the data before sending
+    console.log("Sending data:", tenantData);
+
+    setIsCreating(true);
+
+    try {
+      // Send POST request to the backend to create the account
+      const response = await axios.post("http://localhost:5000/api/accounts", tenantData);
+
+      const newAccount = response.data;
+
+      // Add the new account to the accounts state
+      setAccounts((prevAccounts) => [
+        ...prevAccounts,
+        {
+          tenant: selectedTenant,
+          account: newAccount.account,
           status: "Active",
-          payeeId: payee.id
-        }
+          payeeId: newAccount.payeeId,
+        },
       ]);
-      
+
+      // Reset form fields
+      setSelectedTenant("");
+      setRentAmount("");
+
       toast({
         title: "Virtual account created",
         description: `Successfully created account for ${selectedTenant}`,
       });
-      
-      // Reset form
-      setSelectedTenant("");
-      setRentAmount("");
-      
+
     } catch (error) {
-      console.error("Error creating virtual account:", error);
+      console.error("Error creating virtual account:", error.response ? error.response.data : error.message);
       toast({
         title: "Account creation failed",
         description: "There was an error creating the virtual account. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsCreating(false);
     }
   };
 
+
   const handleMakePayment = async (payeeId: string, tenant: string) => {
     try {
       setIsLoading(true);
-      
-      // Parse rent amount - in real app would use the tenant's actual rent amount
+
       const amount = parseFloat(rentAmount || "100.00");
-      
-      // Send payment via Payman
+
       const payment = await paymanService.sendPayment({
         amountDecimal: amount,
         payeeId: payeeId,
         memo: `Rent payment for ${tenant}`
       });
-      
+
       toast({
         title: "Payment sent",
         description: `Successfully sent $${amount.toFixed(2)} to ${tenant}`,
       });
-      
-      // Update balance after payment
+
       fetchBalance();
-      
+
     } catch (error) {
       console.error("Error sending payment:", error);
       toast({
@@ -170,13 +186,6 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
     }
   };
 
-  const handleNewAccount = () => {
-    toast({
-      title: "New account form ready",
-      description: "Please fill in the details to generate a new account",
-    });
-  };
-
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-6">
@@ -186,7 +195,7 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Balance: {balance !== null ? `$${balance.toFixed(2)}` : 'Loading...'}
           </Button>
-          <Button onClick={handleNewAccount}>
+          <Button onClick={() => toast({ title: "New account form ready", description: "Please fill in the details to generate a new account" })}>
             <PlusCircle className="h-4 w-4 mr-2" />
             Generate New Account
           </Button>
@@ -282,7 +291,7 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {accounts.map((account, i) => (
+              {accounts.length > 0 ? accounts.map((account, i) => (
                 <div key={i} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
@@ -321,7 +330,9 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-muted-foreground">No active accounts available</div>
+              )}
             </div>
           </CardContent>
         </Card>
