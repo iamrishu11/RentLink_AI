@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,9 +23,22 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
     { tenant: "Sarah Johnson", account: "VA-2023-002-SJ", status: "Active", payeeId: "pd-sample-002" },
     { tenant: "Michael Brown", account: "VA-2023-003-MB", status: "Active", payeeId: "pd-sample-003" },
   ]);
+  const [tenants, setTenants] = useState<any[]>([]); // To store tenant data
 
   useEffect(() => {
-    // Fetch current balance on component load
+    // Fetch tenant data from API
+    const fetchTenants = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/tenants'); // Replace with your actual API endpoint
+        const data = await response.json();
+        setTenants(data); // Set tenant data from the backend
+      } catch (error) {
+        console.error('Error fetching tenants:', error);
+      }
+    };
+
+    fetchTenants();
+    // Fetch balance on component load
     fetchBalance();
   }, []);
 
@@ -78,7 +90,6 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
       const newAccountNumber = `VA-${new Date().getFullYear()}-${String(accounts.length + 1).padStart(3, '0')}-${tenantInitials}`;
       
       // Create a payee in Payman
-      // In a real implementation, we would collect actual bank details from a form
       const email = selectedTenant.toLowerCase().replace(' ', '.') + '@example.com';
       const payee = await paymanService.createPayee({
         type: "US_ACH",
@@ -202,10 +213,9 @@ const VirtualAccounts = ({ className }: VirtualAccountsProps) => {
                   disabled={isCreating}
                 >
                   <option value="">Select a tenant...</option>
-                  <option value="James Wilson">James Wilson</option>
-                  <option value="Sarah Johnson">Sarah Johnson</option>
-                  <option value="Michael Brown">Michael Brown</option>
-                  <option value="Emma Davis">Emma Davis</option>
+                  {tenants.map((tenant) => (
+                    <option key={tenant._id} value={tenant.name}>{tenant.name}</option>
+                  ))}
                 </select>
               </div>
 
