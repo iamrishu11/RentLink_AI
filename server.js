@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import tenantRoutes from "./routes/tenants.js"; // Ensure the file exists
+import reminderRoutes from "./routes/reminders.js"; 
 
 dotenv.config();
 
@@ -31,7 +32,11 @@ async function connectDB() {
 
 connectDB();
 
+app.get("/", (req, res) => {
+  res.send("Hello, the server is working!");
+});
 app.use("/api/tenants", tenantRoutes);
+app.use("/api/reminders", reminderRoutes); // Use reminders API
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,6 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BellRing, Mail, MessageSquare, Clock, PlusCircle, Send } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import axios from "axios";
+
+interface Reminder {
+  tenant: string;
+  due: string;
+  type: string;
+  channel: string;
+  lastSent?: string;
+}
 
 interface RemindersProps {
   className?: string;
@@ -14,31 +22,63 @@ interface RemindersProps {
 
 const Reminders = ({ className }: RemindersProps) => {
   const [emailReminders, setEmailReminders] = useState(true);
-  const [smsReminders, setSmsReminders] = useState(false);
+  const [smsReminders, setSmsReminders] = useState(true);
   const [reminderDays, setReminderDays] = useState(7);
   const [lateDays, setLateDays] = useState(1);
   const [followUpDays, setFollowUpDays] = useState(3);
   const [smartReminders, setSmartReminders] = useState(true);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [loading, setLoading] = useState(true); // State to track loading
+
+  // Fetch reminders from the backend
+  useEffect(() => {
+    const fetchReminders = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.get("http://localhost:5000/api/reminders"); // Update API URL if needed
+        console.log("Fetched reminders:", response.data);
+        setReminders(response.data); // Update state with fetched reminders
+      } catch (error) {
+        console.error("Error fetching reminders:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load reminders",
+        });
+      } finally {
+        setLoading(false); // Stop loading once the fetch is done
+      }
+    };
+
+    fetchReminders();
+  }, []);
+
+  const handleSendReminders = async () => {
+    try {
+      // Update lastSent timestamp in the local state
+      const updatedReminders = reminders.map(reminder => ({
+        ...reminder,
+        lastSent: new Date().toLocaleDateString(),
+      }));
   
-  const [reminders, setReminders] = useState([
-    { tenant: "Sarah Johnson", due: "Nov 5, 2023", type: "Due Soon", channel: "Email" },
-    { tenant: "Michael Brown", due: "Nov 2, 2023", type: "Overdue", channel: "Email, SMS" },
-    { tenant: "David Thompson", due: "Nov 7, 2023", type: "Due Soon", channel: "Email" },
-    { tenant: "Jennifer Adams", due: "Nov 1, 2023", type: "Overdue", channel: "Email" },
-  ]);
-
-  const handleSendReminders = () => {
-    toast({
-      title: "Reminders Sent",
-      description: `Successfully sent reminders to ${reminders.length} tenants`,
-    });
-
-    // Update reminder list
-    setReminders(reminders.map(reminder => ({
-      ...reminder,
-      lastSent: new Date().toLocaleDateString()
-    })));
-  };
+      // Send the updated reminders to the backend
+      await axios.put("http://localhost:5000/api/reminders/update", updatedReminders);
+  
+      // After successful update, update the state with the new lastSent field
+      setReminders(updatedReminders);
+  
+      // Show success toast
+      toast({
+        title: "Reminders Sent",
+        description: `Successfully sent reminders to ${reminders.length} tenants`,
+      });
+    } catch (error) {
+      console.error("Error sending reminders:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send reminders",
+      });
+    }
+  };  
 
   const handleAddReminder = () => {
     setFollowUpDays(followUpDays + 3);
@@ -46,6 +86,12 @@ const Reminders = ({ className }: RemindersProps) => {
       title: "Reminder Added",
       description: "Added a new follow-up reminder",
     });
+  };
+
+  // Helper function to format dates
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(); // Return in format MM/DD/YYYY
   };
 
   return (
@@ -80,7 +126,7 @@ const Reminders = ({ className }: RemindersProps) => {
                     onCheckedChange={setEmailReminders}
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium">SMS Reminders</h4>
@@ -152,39 +198,49 @@ const Reminders = ({ className }: RemindersProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {reminders.map((reminder, i) => (
-                <div key={i} className="flex items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className={`rounded-full p-2 mr-3 ${
-                    reminder.type === "Overdue" 
-                      ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" 
-                      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400"
-                  }`}>
-                    {reminder.type === "Overdue" ? (
-                      <BellRing className="h-5 w-5" />
-                    ) : (
-                      <Clock className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">{reminder.tenant}</div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <span>Due: {reminder.due}</span>
-                      <span className="mx-2">•</span>
-                      <span>{reminder.type}</span>
+              {loading ? (
+                <p className="text-muted-foreground">Loading reminders...</p>
+              ) : reminders.length > 0 ? (
+                reminders.map((reminder, i) => (
+                  <div key={i} className="flex items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className={`rounded-full p-2 mr-3 ${
+                      reminder.type === "Overdue" 
+                        ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" 
+                        : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400"
+                    }`}>
+                      {reminder.type === "Overdue" ? (
+                        <BellRing className="h-5 w-5" />
+                      ) : (
+                        <Clock className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">{reminder.tenant}</div>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <span>Due: {formatDate(reminder.due)}</span>
+                        <span className="mx-2">•</span>
+                        <span>{reminder.type}</span>
+                      </div>
+                      {reminder.lastSent && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Last Sent: {formatDate(reminder.lastSent)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm">
+                      {reminder.channel.includes("Email") && (
+                        <Mail className="h-4 w-4 inline-block mr-1 text-brand-blue" />
+                      )}
+                      {reminder.channel.includes("SMS") && (
+                        <MessageSquare className="h-4 w-4 inline-block text-brand-blue" />
+                      )}
                     </div>
                   </div>
-                  <div className="text-sm">
-                    {reminder.channel.includes("Email") && (
-                      <Mail className="h-4 w-4 inline-block mr-1 text-brand-blue" />
-                    )}
-                    {reminder.channel.includes("SMS") && (
-                      <MessageSquare className="h-4 w-4 inline-block text-brand-blue" />
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-muted-foreground">No reminders found.</p>
+              )}
             </div>
-            
             <div className="mt-6 p-4 rounded-lg bg-muted/50 border">
               <div className="flex items-center">
                 <div className="rounded-full p-2 mr-3 bg-brand-lightBlue text-brand-blue dark:bg-blue-900 dark:text-blue-300">
