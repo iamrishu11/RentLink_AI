@@ -1,4 +1,4 @@
-### RentLink AI – Smart Payment Matching for Property Managers**  
+### RentLink AI – Smart Payment Matching for Property Managers
 
 **Description:**  
 RentLink AI is an AI-powered financial automation tool designed to help property managers streamline rent reconciliation. By integrating with **Payman AI**, our system intelligently matches incoming payments with tenant records, reducing manual work and minimizing errors.  
